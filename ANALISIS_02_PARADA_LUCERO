@@ -1,1 +1,153 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+
+import pandas as pd
+#%%
+synergy_dataframe = pd.read_csv('synergy_logistics_database.csv', 
+                                index_col=0,                                   #ID 
+                                encoding='utf-8',                              #Metadato, puede ser cualquier cosa 
+                                parse_dates=[4, 5])                            #Para convertir en fechas                           
+
+#%%
+
+
+exports = synergy_dataframe[synergy_dataframe['direction'] == 'Exports']
+imports = synergy_dataframe[synergy_dataframe['direction'] == 'Imports']
+
+
+
+#%%
+
+#Agrupando exportaciones e importaciones con los datos relevantes de: direction, origin, destination, transport mode
+
+agrupacion_exp = exports.groupby(by=['direction','origin', 'destination',
+                                               'transport_mode'])
+
+descripcion_agrupacion_exp = agrupacion_exp.describe()['total_value']
+
+
+agrupacion_impor = imports.groupby(by=['direction','origin', 'destination',
+                                               'transport_mode'])
+
+descripcion_agrupacion_impor = agrupacion_impor.describe()['total_value']
+
+#%%
+#Para contar la fecuencia en la que se utilizaron las rutas ordenandoles
+
+
+conteo_exp = descripcion_agrupacion_exp['count']
+
+conteo_ord_exp = conteo_exp.sort_values(ascending=False)                       #De mayor a menor
+
+
+conteo_impor = descripcion_agrupacion_impor['count']
+
+conteo_ord_impor = conteo_impor.sort_values(ascending=False)      
+
+
+#%%
+
+import seaborn as sns                                                      #Para realizar la gráfica
+import matplotlib.pyplot as plt
+
+
+conteo_ord_exp = conteo_ord_exp.to_frame().reset_index()
+
+
+conteo_ord_impor = conteo_ord_impor.to_frame().reset_index()
+
+
+#%%
+#El primer grafico sera la relacion destination/count/transport mode (Solo el top10)
+
+g = sns.barplot(x='destination', y='count', data=conteo_ord_exp.head(10), hue='transport_mode')      #Para sacar gráficos
+plt.show()                                                                    
+
+
+f = sns.barplot(x='destination', y='count', data=conteo_ord_impor.head(10), hue='transport_mode')      #Para sacar gráficos
+plt.show() 
+
+
+
+#%%
+#Separo por años y meses (aprovecho para sacar medio de transporte)
+
+value_2018 = synergy_dataframe[synergy_dataframe['year'] == '2018'].copy()      #Se realiza una cópia 
+
+value_2018['month'] = value_2018['date'].dt.month                               #Los datos por mes
+
+
+datos_mensuales_2018 = value_2018.groupby(['month', 'transport_mode'])          #Datos por mes
+#%% Datos extras que podrían funcionar para otro reporte:
+
+datos_mensuales_2018.sum()                                                     #Suma de ganancias                                                        #suma total ganancias cada mes
+
+datos_mensuales_2018.count()['total_value']                                           #frecuencia del medio de transporte
+
+datos_mensuales_2018.describe()['total_value']          
+
+#%%% 
+# Graficando para 2018
+
+serie = datos_mensuales_2018.count()['total_value']
+
+conteo_serie= serie.sort_values(ascending=False)
+
+v18 = conteo_serie.to_frame().reset_index()
+
+
+v18 = v18.pivot('month', 'transport_mode', 'total_value')
+
+
+sns.lineplot(data=v18)                                                    #Grafico
+
+
+#%% #Para que se repita en todos los años: (se pone sin datos para que lo haga para todos los años)
+    
+    
+data = synergy_dataframe.copy()
+
+data['year_month'] = data['date'].dt.strftime('%Y-%m')
+
+data_year_month = data.groupby(['year_month', 'transport_mode'])
+
+serie = data_year_month.sum()['total_value']
+
+seriee = serie.sort_values(ascending=False)                                    #Valores ordenas, se pueden ver los 3 años más productivos
+
+dym = serie.to_frame().reset_index()
+
+dym = dym.pivot('year_month', 'transport_mode', 'total_value')
+
+
+sns.lineplot(data=dym)
+
+
+#%%
+exports = synergy_dataframe[synergy_dataframe['direction'] == 'Exports']
+imports = synergy_dataframe[synergy_dataframe['direction'] == 'Imports']
+
+
+def sol_3 (df,p):
+   value_country = df.groupby('origin').sum()['total_value'].reset_index()
+   total_value_for_percent = value_country['total_value'].sum()
+   value_country['percent'] = 100 * value_country['total_value'] / total_value_for_percent
+   value_country.sort_values(by='percent', ascending=False, inplace=True)
+   value_country['cumsum'] = value_country['percent'].cumsum()
+   sublista = value_country[value_country['cumsum']< p]
+   
+   return sublista
+
+   
+res = sol_3(synergy_dataframe, 80)
+     
+print('Solucion al problema 3.1:\n', sol_3(imports,80)) 
+  
+   
+  
+
+#%%
+
+print("Gracias, Jimmy")
 
